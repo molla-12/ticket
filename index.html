@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Felege Ghion Bus Ticket Booking</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f4f4f4; }
+    h1 { color: #333; text-align: center; }
+
+    #loginPage {
+      display: flex; justify-content: center; align-items: center; height: 100vh;
+    }
+    .login-container {
+      background: #fff; padding: 30px; border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 320px; text-align: center;
+    }
+    .login-container h2 { color: #28a745; margin-bottom: 20px; }
+    .login-container input {
+      width: 100%; padding: 10px; margin: 10px 0;
+      border: 1px solid #ccc; border-radius: 5px;
+    }
+    .login-container button {
+      background: #28a745; color: white; border: none; padding: 10px;
+      width: 100%; cursor: pointer; border-radius: 5px; font-weight: bold;
+    }
+    .login-container button:hover { background: #218838; }
+    .error { color: red; font-size: 0.9em; margin-top: 10px; }
+
+    #bookingPage { display: none; padding: 20px; }
+    .top-bar {
+  display: flex;
+  justify-content: center;      /* ✅ centers the h1 horizontally */
+  align-items: center;
+  margin-bottom: 10px;
+  position: relative;           /* ✅ allows absolute positioning of button */
+  padding: 0 15px;
+}
+
+.logout-btn {
+  position: absolute;           /* ✅ fix button to the right corner */
+  right: 15px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 5px 12px;
+  font-size: 13px;
+  border-radius: 4px;
+  cursor: pointer;
+  width: auto;
+}
+.logout-btn:hover {
+  background: #c82333;
+}
+
+
+
+    .logout-btn:hover { background: #c82333; }
+
+    form {
+      background: #fff; padding: 20px; border-radius: 5px;
+      max-width: 700px; margin: 0 auto 20px auto;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    label { display: block; margin-top: 10px; font-weight: bold; }
+    input, select, textarea, button {
+      width: 100%; padding: 10px; margin-top: 5px;
+      border-radius: 3px; border: 1px solid #ccc; box-sizing: border-box;
+    }
+    button { background: #28a745; color: white; border: none; cursor: pointer; margin-top: 15px; }
+    button:hover { background: #218838; }
+
+    table {
+      width: 100%; border-collapse: collapse; margin-top: 20px; background: #fff;
+    }
+    th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
+    th { background: #28a745; color: white; }
+  </style>
+</head>
+<body>
+
+  <!-- LOGIN PAGE -->
+  <div id="loginPage">
+    <div class="login-container">
+      <h2>Felege Ghion Login</h2>
+      <input type="text" id="username" placeholder="Username" required>
+      <input type="password" id="password" placeholder="Password" required>
+      <button onclick="login()">Login</button>
+      <p class="error" id="error"></p>
+    </div>
+  </div>
+
+  <!-- BOOKING PAGE -->
+  <div id="bookingPage">
+    <div class="top-bar">
+      <h1>Felege Ghion Bus Transport</h1>
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+
+    <form id="ticketForm">
+      <label>Passenger Name:</label>
+      <input type="text" id="name" required>
+      <label>Phone Number:</label>
+      <input type="tel" id="phone" required placeholder="e.g., +251 912345678">
+      <label>Origin:</label>
+      <select id="origin" required><option value="">Select Origin</option></select>
+      <label>Destination:</label>
+      <select id="destination" required><option value="">Select Destination</option></select>
+      <label>Travel Date:</label>
+      <input type="date" id="date" required>
+      <label>Seat Number:</label>
+      <select id="seat" required><option value="">Select Seat</option></select>
+      <label>Birr Amount:</label>
+      <input type="number" id="amount" required>
+      <label>Ticket Number:</label>
+      <input type="text" id="ticketNumber" required>
+      <label>Comment:</label>
+      <textarea id="comment"></textarea>
+      <button type="submit">Book Ticket</button>
+    </form>
+
+    <label>Export Excel for Destination:</label>
+    <input type="text" id="exportDestination" placeholder="Enter destination">
+    <button id="exportBtn">Export to Excel</button>
+
+    <table id="ticketTable">
+      <thead>
+        <tr>
+          <th>Seat Number</th><th>Name</th><th>Phone</th><th>Origin</th>
+          <th>Destination</th><th>Travel Date</th><th>Birr Amount</th>
+          <th>Ticket Number</th><th>Comment</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+<script>
+const loginPage = document.getElementById("loginPage");
+const bookingPage = document.getElementById("bookingPage");
+const ticketTable = document.getElementById("ticketTable").getElementsByTagName("tbody")[0];
+const ticketForm = document.getElementById("ticketForm");
+const seatSelect = document.getElementById("seat");
+const dateInput = document.getElementById("date");
+const destinationInput = document.getElementById("destination");
+const exportDestinationInput = document.getElementById("exportDestination");
+const exportBtn = document.getElementById("exportBtn");
+let tickets = [];
+const allSeats = Array.from({ length: 52 }, (_, i) => i + 1);
+
+async function login() {
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value.trim();
+  const error = document.getElementById("error");
+
+  const response = await fetch("api/login.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password })
+  });
+
+  const result = await response.json();
+
+  if (result.status === "success") {
+    localStorage.setItem("loggedIn", "true");
+    loginPage.style.display = "none";
+    bookingPage.style.display = "block";
+    loadTickets();
+  } else {
+    error.textContent = result.message;
+  }
+}
+
+function logout() {
+  localStorage.removeItem("loggedIn");
+  bookingPage.style.display = "none";
+  loginPage.style.display = "flex";
+}
+
+window.onload = function() {
+  if (localStorage.getItem("loggedIn") === "true") {
+    loginPage.style.display = "none";
+    bookingPage.style.display = "block";
+    loadTickets();
+  } else {
+    loginPage.style.display = "flex";
+    bookingPage.style.display = "none";
+  }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  const originSelect = document.getElementById('origin');
+  const destinationSelect = document.getElementById('destination');
+  const cities = ["Addis Ababa", "Jimma", "Dilla", "Dessie", "Dire Dawa", "Alamata", "Woldia"];
+  cities.forEach(city => {
+    const o = document.createElement('option');
+    o.value = city; o.textContent = city;
+    originSelect.appendChild(o);
+    const d = o.cloneNode(true);
+    destinationSelect.appendChild(d);
+  });
+});
+
+function updateFreeSeats() {
+  const date = dateInput.value;
+  const destination = destinationInput.value;
+  if (!date || !destination) {
+    seatSelect.innerHTML = '<option value="">Select Seat</option>';
+    return;
+  }
+  const bookedSeats = tickets.filter(t => t.travel_date === date && t.destination === destination)
+    .map(t => parseInt(t.seat));
+  const freeSeats = allSeats.filter(s => !bookedSeats.includes(s));
+  seatSelect.innerHTML = '<option value="">Select Seat</option>';
+  freeSeats.forEach(seat => {
+    const opt = document.createElement("option");
+    opt.value = seat; opt.textContent = seat;
+    seatSelect.appendChild(opt);
+  });
+}
+
+dateInput.addEventListener('change', updateFreeSeats);
+destinationInput.addEventListener('change', updateFreeSeats);
+
+ticketForm.addEventListener('submit', async function(event) {
+  event.preventDefault();
+
+  const seat = parseInt(seatSelect.value);
+  const origin = document.getElementById('origin').value;
+  const destination = destinationInput.value;
+  const date = dateInput.value;
+  const name = document.getElementById('name').value.trim();
+  const phone = document.getElementById('phone').value.trim();
+  const amount = parseFloat(document.getElementById('amount').value);
+  const ticketNumber = document.getElementById('ticketNumber').value.trim();
+  const comment = document.getElementById('comment').value.trim();
+
+  // ✅ Validate origin and destination
+  if (origin === destination) {
+    alert("Origin and destination cannot be the same.");
+    return;
+  }
+
+  // ✅ Check duplicate seat in local list (optional fast check before backend)
+  const existingSeat = tickets.find(
+    t => t.seat === seat && t.origin === origin && t.destination === destination && t.date === date
+  );
+  if (existingSeat) {
+    alert("This seat number is already booked for the selected route and date.");
+    return;
+  }
+
+  const ticket = { seat, name, phone, origin, destination, date, amount, ticketNumber, comment };
+
+  const response = await fetch("api/tickets.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(ticket)
+  });
+
+  const result = await response.json();
+
+  if (result.status === "success") {
+    tickets.push(ticket);
+    addTicketToTable(ticket);
+    ticketForm.reset();
+    updateFreeSeats();
+  } else {
+    alert(result.message);
+  }
+});
+
+function addTicketToTable(ticket) {
+  const row = ticketTable.insertRow();
+  row.insertCell(0).textContent = ticket.seat;
+  row.insertCell(1).textContent = ticket.name;
+  row.insertCell(2).textContent = ticket.phone;
+  row.insertCell(3).textContent = ticket.origin;
+  row.insertCell(4).textContent = ticket.destination;
+  row.insertCell(5).textContent = ticket.travel_date || ticket.date;
+  row.insertCell(6).textContent = ticket.amount;
+  row.insertCell(7).textContent = ticket.ticketNumber;
+  row.insertCell(8).textContent = ticket.comment;
+}
+
+async function loadTickets() {
+  const res = await fetch("api/tickets.php");
+  const data = await res.json();
+  tickets = data;
+  ticketTable.innerHTML = "";
+  tickets.forEach(addTicketToTable);
+  updateFreeSeats();
+}
+
+exportBtn.addEventListener('click', async () => {
+  const dest = exportDestinationInput.value.trim();
+  const res = await fetch("api/tickets.php" + (dest ? `?destination=${encodeURIComponent(dest)}` : ""));
+  const data = await res.json();
+  if (data.length === 0) {
+    alert("No tickets found!");
+    return;
+  }
+  let tableHTML = "<table border='1'><tr><th>Seat Number</th><th>Name</th><th>Phone</th><th>Origin</th><th>Destination</th><th>Travel Date</th><th>Birr Amount</th><th>Ticket Number</th><th>Comment</th></tr>";
+  data.forEach(t => {
+    tableHTML += `<tr>
+      <td>${t.seat}</td><td>${t.name}</td><td>${t.phone}</td><td>${t.origin}</td>
+      <td>${t.destination}</td><td>${t.travel_date}</td><td>${t.amount}</td>
+      <td>${t.ticket_number}</td><td>${t.comment}</td></tr>`;
+  });
+  tableHTML += "</table>";
+  const blob = new Blob([tableHTML], { type: "application/vnd.ms-excel" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `tickets_${dest || 'all'}.xls`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+</script>
+</body>
+</html>
