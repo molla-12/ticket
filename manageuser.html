@@ -805,7 +805,7 @@
         const roleCell = row.insertCell(2);
         const roleBadge = document.createElement('span');
         roleBadge.className = `role-badge ${user.is_admin ? 'role-admin' : 'role-user'}`;
-        roleBadge.textContent = user.is_admin ? 'Admin' : 'User';
+        roleBadge.textContent = user.is_admin==1 ? 'Admin' : 'User';
         roleCell.appendChild(roleBadge);
         
         const createdDate = user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown';

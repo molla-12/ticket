@@ -360,6 +360,16 @@
       box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
     }
 
+    textarea.form-control {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .required::after {
+      content: " *";
+      color: var(--danger);
+    }
+
     .btn-success {
       padding: 14px 28px;
       font-size: 16px;
@@ -405,6 +415,22 @@
     .data-table td {
       padding: 16px 20px;
       font-size: 14px;
+    }
+
+    .comment-cell {
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .comment-cell:hover {
+      white-space: normal;
+      overflow: visible;
+      background: var(--white);
+      position: relative;
+      z-index: 10;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
 
     .action-buttons {
@@ -572,6 +598,10 @@
       .action-buttons {
         flex-direction: column;
       }
+      
+      .comment-cell {
+        max-width: 150px;
+      }
     }
   </style>
 </head>
@@ -699,55 +729,55 @@
             <input type="hidden" id="ticketId">
             <div class="form-grid">
               <div class="form-group">
-                <label for="name">Passenger Name</label>
+                <label for="name" class="required">Passenger Name</label>
                 <input type="text" id="name" class="form-control" required oninput="validateTextInput(this)" placeholder="Enter passenger name">
               </div>
               
               <div class="form-group">
-                <label for="phone">Phone Number</label>
+                <label for="phone" class="required">Phone Number</label>
                 <input type="tel" id="phone" class="form-control" required placeholder="e.g., +251 912345678" oninput="validatePhoneInput(this)">
               </div>
               
               <div class="form-group">
-                <label for="origin">Origin</label>
+                <label for="origin" class="required">Origin</label>
                 <select id="origin" class="form-control" required>
                   <option value="">Select Origin</option>
                 </select>
               </div>
               
               <div class="form-group">
-                <label for="destination">Destination</label>
+                <label for="destination" class="required">Destination</label>
                 <select id="destination" class="form-control" required>
                   <option value="">Select Destination</option>
                 </select>
               </div>
               
               <div class="form-group">
-                <label for="date">Travel Date</label>
+                <label for="date" class="required">Travel Date</label>
                 <input type="date" id="date" class="form-control" required>
               </div>
               
               <div class="form-group">
-                <label for="seat">Seat Number</label>
+                <label for="seat" class="required">Seat Number</label>
                 <select id="seat" class="form-control" required>
                   <option value="">Select Seat</option>
                 </select>
               </div>
               
               <div class="form-group">
-                <label for="amount">Birr Amount</label>
+                <label for="amount" class="required">Birr Amount</label>
                 <input type="text" id="amount" class="form-control" required oninput="validateNumberInput(this)" placeholder="Enter amount">
               </div>
               
               <div class="form-group">
-                <label for="ticketNumber">Ticket Number</label>
+                <label for="ticketNumber" class="required">Ticket Number</label>
                 <input type="text" id="ticketNumber" class="form-control" required placeholder="Enter ticket number">
               </div>
             </div>
             
             <div class="form-group">
-              <label for="comment">Comment</label>
-              <textarea id="comment" class="form-control" rows="3" placeholder="Additional comments (optional)"></textarea>
+              <label for="comment" class="required">Comment</label>
+              <textarea id="comment" class="form-control" rows="3" required placeholder="Enter comments about the booking"></textarea>
             </div>
             
             <button type="submit" class="btn btn-success" id="submitBtn">
@@ -804,6 +834,7 @@
                   <th>Date</th>
                   <th>Amount</th>
                   <th>Ticket #</th>
+                  <th>Comment</th>
                   <th>Created By</th>
                   <th>Actions</th>
                 </tr>
@@ -833,9 +864,6 @@
   </div>
 
   <script>
-    // All your existing JavaScript functionality remains exactly the same
-    // Only the HTML and CSS have been updated for the new design
-    
     const loginPage = document.getElementById("loginPage");
     const bookingPage = document.getElementById("bookingPage");
     const ticketTable = document.getElementById("ticketTable").getElementsByTagName("tbody")[0];
@@ -1028,8 +1056,15 @@
       const ticketNumber = document.getElementById('ticketNumber').value.trim();
       const comment = document.getElementById('comment').value.trim();
 
+      // Validate required fields
       if (origin === destination) {
         alert("Origin and destination cannot be the same.");
+        return;
+      }
+
+      if (!comment.trim()) {
+        alert("Comment is required. Please provide comments about the booking.");
+        document.getElementById('comment').focus();
         return;
       }
 
@@ -1136,10 +1171,17 @@
       row.insertCell(5).textContent = ticket.travel_date || ticket.date;
       row.insertCell(6).textContent = ticket.amount + ' Birr';
       row.insertCell(7).textContent = ticket.ticket_number || ticket.ticketNumber;
-      row.insertCell(8).textContent = ticket.created_by;
+      
+      // Comment cell with hover effect
+      const commentCell = row.insertCell(8);
+      commentCell.className = 'comment-cell';
+      commentCell.textContent = ticket.comment || 'No comment';
+      commentCell.title = ticket.comment || 'No comment';
+      
+      row.insertCell(9).textContent = ticket.created_by;
       
       // Actions cell
-      const actionsCell = row.insertCell(9);
+      const actionsCell = row.insertCell(10);
       const actionsDiv = document.createElement("div");
       actionsDiv.className = "action-buttons";
       
