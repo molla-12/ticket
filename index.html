@@ -282,27 +282,32 @@ async function login() {
   const password = document.getElementById("password").value.trim();
   const error = document.getElementById("error");
 
-  const response = await fetch("api/login.php", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password })
-  });
+  try {
+    const response = await fetch("api/login.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password })
+    });
 
-  const result = await response.json();
+    const result = await response.json();
 
-  if (result.status === "success") {
-    currentUser = result.username;
-    isAdmin = result.is_admin == 1;
-    localStorage.setItem("loggedIn", "true");
-    localStorage.setItem("username", currentUser);
-    localStorage.setItem("isAdmin", isAdmin);
-    
-    userInfo.textContent = `Welcome, ${currentUser} ${isAdmin ? '(Admin)' : ''}`;
-    loginPage.style.display = "none";
-    bookingPage.style.display = "block";
-    loadTickets();
-  } else {
-    error.textContent = result.message;
+    if (result.status === "success") {
+      currentUser = result.username;
+      isAdmin = result.is_admin == 1;
+      localStorage.setItem("loggedIn", "true");
+      localStorage.setItem("username", currentUser);
+      localStorage.setItem("isAdmin", isAdmin);
+      
+      userInfo.textContent = `Welcome, ${currentUser} ${isAdmin ? '(Admin)' : ''}`;
+      loginPage.style.display = "none";
+      bookingPage.style.display = "block";
+      loadTickets();
+    } else {
+      error.textContent = result.message;
+    }
+  } catch (error) {
+    console.error("Login error:", error);
+    document.getElementById("error").textContent = "Login failed. Please try again.";
   }
 }
 
@@ -371,22 +376,35 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-function updateFreeSeats() {
+function updateFreeSeats(editingSeat = null) {
   const date = dateInput.value;
   const destination = destinationInput.value;
+  
   if (!date || !destination) {
     seatSelect.innerHTML = '<option value="">Select Seat</option>';
     return;
   }
-  const bookedSeats = tickets.filter(t => t.travel_date === date && t.destination === destination)
+  
+  const bookedSeats = tickets
+    .filter(t => t.travel_date === date && t.destination === destination)
     .map(t => parseInt(t.seat));
-  const freeSeats = allSeats.filter(s => !bookedSeats.includes(s));
+  
+  const freeSeats = allSeats.filter(s => !bookedSeats.includes(s) || s === editingSeat);
+  
   seatSelect.innerHTML = '<option value="">Select Seat</option>';
   freeSeats.forEach(seat => {
     const opt = document.createElement("option");
-    opt.value = seat; opt.textContent = seat;
+    opt.value = seat;
+    opt.textContent = seat;
     seatSelect.appendChild(opt);
   });
+  
+  // Set the seat value if editing
+  if (editingSeat) {
+    setTimeout(() => {
+      seatSelect.value = editingSeat;
+    }, 100);
+  }
 }
 
 dateInput.addEventListener('change', updateFreeSeats);
@@ -413,7 +431,7 @@ ticketForm.addEventListener('submit', async function(event) {
 
   const ticketData = { 
     seat, name, phone, origin, destination, date, 
-    amount, ticketNumber, comment, created_by: currentUser 
+    amount, ticketNumber, comment
   };
 
   let url = "api/tickets.php";
@@ -421,42 +439,47 @@ ticketForm.addEventListener('submit', async function(event) {
 
   if (ticketId) {
     // Editing existing ticket
-    ticketData.id = ticketId;
+    ticketData.id = parseInt(ticketId);
     method = "PUT";
+  } else {
+    // Creating new ticket
+    ticketData.created_by = currentUser;
   }
 
-  const response = await fetch(url, {
-    method: method,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(ticketData)
-  });
+  try {
+    const response = await fetch(url, {
+      method: method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(ticketData)
+    });
 
-  const result = await response.json();
+    const result = await response.json();
+    console.log("Server response:", result);
 
-  if (result.status === "success") {
-    if (ticketId) {
-      // Update local tickets array
-      const index = tickets.findIndex(t => t.id == ticketId);
-      if (index !== -1) {
-        tickets[index] = { ...tickets[index], ...ticketData };
-      }
+    if (result.status === "success") {
+      alert(result.message);
+      loadTickets();
+      ticketForm.reset();
+      ticketForm.style.display = "none";
+      document.getElementById("ticketId").value = "";
+      submitBtn.textContent = "Book Ticket";
     } else {
-      tickets.push({ id: Date.now(), ...ticketData }); // Temporary ID until reload
+      alert("Error: " + result.message);
     }
-    
-    loadTickets(); // Reload to get proper IDs and data
-    ticketForm.reset();
-    ticketForm.style.display = "none";
-    document.getElementById("ticketId").value = "";
-    submitBtn.textContent = "Book Ticket";
-  } else {
-    alert(result.message);
+  } catch (error) {
+    console.error("Error:", error);
+    alert("Error: " + error.message);
   }
 });
 
 function editTicket(id) {
   const ticket = tickets.find(t => t.id == id);
-  if (!ticket) return;
+  if (!ticket) {
+    alert("Ticket not found!");
+    return;
+  }
+
+  console.log("Editing ticket:", ticket);
 
   document.getElementById("ticketId").value = ticket.id;
   document.getElementById("name").value = ticket.name;
@@ -468,14 +491,12 @@ function editTicket(id) {
   document.getElementById("ticketNumber").value = ticket.ticket_number || ticket.ticketNumber;
   document.getElementById("comment").value = ticket.comment || "";
 
-  // Update seat options
-  updateFreeSeats();
-  setTimeout(() => {
-    document.getElementById("seat").value = ticket.seat;
-  }, 100);
+  // Update seat options and set the current seat
+  updateFreeSeats(ticket.seat);
 
   submitBtn.textContent = "Update Ticket";
   ticketForm.style.display = "block";
+  ticketForm.scrollIntoView({ behavior: 'smooth' });
 }
 
 async function deleteTicket(id) {
@@ -483,19 +504,27 @@ async function deleteTicket(id) {
     return;
   }
 
-  const response = await fetch("api/tickets.php", {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id })
-  });
+  try {
+    console.log("Deleting ticket ID:", id);
+    
+    const response = await fetch("api/tickets.php", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: parseInt(id) })
+    });
 
-  const result = await response.json();
+    const result = await response.json();
+    console.log("Delete response:", result);
 
-  if (result.status === "success") {
-    tickets = tickets.filter(t => t.id != id);
-    loadTickets();
-  } else {
-    alert(result.message);
+    if (result.status === "success") {
+      alert(result.message);
+      loadTickets();
+    } else {
+      alert("Error: " + result.message);
+    }
+  } catch (error) {
+    console.error("Delete error:", error);
+    alert("Error deleting ticket: " + error.message);
   }
 }
 
@@ -509,7 +538,7 @@ function addTicketToTable(ticket) {
   row.insertCell(5).textContent = ticket.travel_date || ticket.date;
   row.insertCell(6).textContent = ticket.amount;
   row.insertCell(7).textContent = ticket.ticket_number || ticket.ticketNumber;
-  row.insertCell(8).textContent = ticket.comment;
+  row.insertCell(8).textContent = ticket.comment || '';
   row.insertCell(9).textContent = ticket.created_by;
   
   // Actions cell
@@ -535,12 +564,20 @@ function addTicketToTable(ticket) {
 }
 
 async function loadTickets() {
-  const res = await fetch("api/tickets.php");
-  const data = await res.json();
-  tickets = data;
-  ticketTable.innerHTML = "";
-  tickets.forEach(addTicketToTable);
-  updateFreeSeats();
+  try {
+    const res = await fetch("api/tickets.php");
+    if (!res.ok) {
+      throw new Error(`HTTP error! status: ${res.status}`);
+    }
+    const data = await res.json();
+    tickets = data;
+    ticketTable.innerHTML = "";
+    tickets.forEach(addTicketToTable);
+    updateFreeSeats();
+  } catch (error) {
+    console.error("Error loading tickets:", error);
+    alert("Error loading tickets: " + error.message);
+  }
 }
 
 // Export functionality
@@ -555,35 +592,39 @@ exportBtn.addEventListener('click', async () => {
   const queryString = params.toString();
   const url = "api/tickets.php" + (queryString ? `?${queryString}` : "");
   
-  const res = await fetch(url);
-  const data = await res.json();
-  
-  if (data.length === 0) {
-    alert("No tickets found for the selected filters!");
-    return;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    
+    if (data.length === 0) {
+      alert("No tickets found for the selected filters!");
+      return;
+    }
+    
+    let filename = 'tickets';
+    if (destination) filename += `_${destination.replace(/\s+/g, '_')}`;
+    if (date) filename += `_${date}`;
+    filename += '.xls';
+    
+    let tableHTML = "<table border='1'><tr><th>Seat Number</th><th>Name</th><th>Phone</th><th>Origin</th><th>Destination</th><th>Travel Date</th><th>Birr Amount</th><th>Ticket Number</th><th>Comment</th><th>Created By</th></tr>";
+    data.forEach(t => {
+      tableHTML += `<tr>
+        <td>${t.seat}</td><td>${t.name}</td><td>${t.phone}</td><td>${t.origin}</td>
+        <td>${t.destination}</td><td>${t.travel_date || t.date}</td><td>${t.amount}</td>
+        <td>${t.ticket_number || t.ticketNumber}</td><td>${t.comment || ''}</td><td>${t.created_by}</td></tr>`;
+    });
+    tableHTML += "</table>";
+    
+    const blob = new Blob([tableHTML], { type: "application/vnd.ms-excel" });
+    const urlBlob = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = urlBlob;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(urlBlob);
+  } catch (error) {
+    alert("Error exporting tickets: " + error.message);
   }
-  
-  let filename = 'tickets';
-  if (destination) filename += `_${destination.replace(/\s+/g, '_')}`;
-  if (date) filename += `_${date}`;
-  filename += '.xls';
-  
-  let tableHTML = "<table border='1'><tr><th>Seat Number</th><th>Name</th><th>Phone</th><th>Origin</th><th>Destination</th><th>Travel Date</th><th>Birr Amount</th><th>Ticket Number</th><th>Comment</th><th>Created By</th></tr>";
-  data.forEach(t => {
-    tableHTML += `<tr>
-      <td>${t.seat}</td><td>${t.name}</td><td>${t.phone}</td><td>${t.origin}</td>
-      <td>${t.destination}</td><td>${t.travel_date || t.date}</td><td>${t.amount}</td>
-      <td>${t.ticket_number || t.ticketNumber}</td><td>${t.comment}</td><td>${t.created_by}</td></tr>`;
-  });
-  tableHTML += "</table>";
-  
-  const blob = new Blob([tableHTML], { type: "application/vnd.ms-excel" });
-  const urlBlob = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = urlBlob;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(urlBlob);
 });
 </script>
 </body>
