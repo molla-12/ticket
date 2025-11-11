@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Nov 07, 2025 at 09:51 AM
+-- Generation Time: Nov 11, 2025 at 07:09 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -37,15 +37,16 @@ CREATE TABLE `tickets` (
   `travel_date` date DEFAULT NULL,
   `amount` decimal(10,2) DEFAULT NULL,
   `ticket_number` varchar(50) DEFAULT NULL,
-  `comment` text DEFAULT NULL
+  `comment` text DEFAULT NULL,
+  `created_by` varchar(191) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `tickets`
 --
 
-INSERT INTO `tickets` (`id`, `seat`, `name`, `phone`, `origin`, `destination`, `travel_date`, `amount`, `ticket_number`, `comment`) VALUES
-(1, 5, 'Molla Manie Bishaw', '0928526047', 'Addis Ababa', 'Dilla', '2025-11-12', 122.00, '2', '32');
+INSERT INTO `tickets` (`id`, `seat`, `name`, `phone`, `origin`, `destination`, `travel_date`, `amount`, `ticket_number`, `comment`, `created_by`) VALUES
+(8, 7, 'Abebe Damtew', '0928526047', 'Jimma', 'Dilla', '2025-11-13', 122.00, '23', 'tetsdfafs', 'menberu');
 
 -- --------------------------------------------------------
 
@@ -56,15 +57,18 @@ INSERT INTO `tickets` (`id`, `seat`, `name`, `phone`, `origin`, `destination`, `
 CREATE TABLE `users` (
   `id` int(11) NOT NULL,
   `username` varchar(50) DEFAULT NULL,
-  `password` varchar(255) DEFAULT NULL
+  `password` varchar(255) DEFAULT NULL,
+  `is_admin` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`id`, `username`, `password`) VALUES
-(1, 'admin', '827ccb0eea8a706c4c34a16891f84e7b');
+INSERT INTO `users` (`id`, `username`, `password`, `is_admin`) VALUES
+(1, 'admin', '827ccb0eea8a706c4c34a16891f84e7b', 0),
+(2, 'menberu', '0192023a7bbd73250516f069df18b500', 1),
+(3, 'user', '0192023a7bbd73250516f069df18b500', 0);
 
 --
 -- Indexes for dumped tables
@@ -91,13 +95,13 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `tickets`
 --
 ALTER TABLE `tickets`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

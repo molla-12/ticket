@@ -114,6 +114,23 @@
       background: #218838;
     }
 
+.user-management-btn {
+  background: #6f42c1;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-bottom: 20px;
+  font-weight: bold;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.user-management-btn:hover {
+  background: #5a2d91;
+}
     /* NEW STYLES FOR EDIT/DELETE FUNCTIONALITY */
     .action-buttons {
       display: flex;
@@ -181,7 +198,11 @@
         <span id="userInfo" style="margin-right: 15px;"></span>
         <button class="logout-btn" onclick="logout()">Logout</button>
       </div>
+      <button class="user-management-btn" id="userManagementBtn" onclick="goToUserManagement()" style="display: none;">
+  User Management
+</button>
     </div>
+    
 
     <button class="add-ticket-btn" onclick="toggleTicketForm()">Add New Ticket</button>
 
@@ -299,6 +320,10 @@ async function login() {
       localStorage.setItem("isAdmin", isAdmin);
       
       userInfo.textContent = `Welcome, ${currentUser} ${isAdmin ? '(Admin)' : ''}`;
+       if (isAdmin) {
+    document.getElementById("userManagementBtn").style.display = 'block';
+  }
+  
       loginPage.style.display = "none";
       bookingPage.style.display = "block";
       loadTickets();
@@ -626,6 +651,9 @@ exportBtn.addEventListener('click', async () => {
     alert("Error exporting tickets: " + error.message);
   }
 });
+function goToUserManagement() {
+  window.location.href = "manageuser.html";
+}
 </script>
 </body>
 </html>
