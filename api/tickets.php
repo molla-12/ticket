@@ -5,9 +5,7 @@ include "db.php";
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === "POST") {
-  // Decode request body
   $data = json_decode(file_get_contents("php://input"), true);
-
   $seat = intval($data['seat']);
   $name = trim($data['name']);
   $phone = trim($data['phone']);
@@ -17,59 +15,59 @@ if ($method === "POST") {
   $amount = floatval($data['amount']);
   $ticketNumber = trim($data['ticketNumber']);
   $comment = trim($data['comment']);
+  $createdBy = trim($data['created_by']);
 
-  // 1️⃣ Validate that origin and destination are not the same
   if ($origin === $destination) {
     echo json_encode(["status" => "error", "message" => "Origin and destination cannot be the same."]);
     exit;
   }
 
-  // 2️⃣ Check if the seat is already taken for this trip (same origin, destination, and date)
   $check = $conn->prepare("
     SELECT id FROM tickets 
     WHERE seat = ? AND origin = ? AND destination = ? AND travel_date = ?
   ");
   $check->bind_param("isss", $seat, $origin, $destination, $date);
   $check->execute();
-  $result = $check->get_result();
-
-  if ($result->num_rows > 0) {
-    echo json_encode(["status" => "error", "message" => "Seat number already booked for this route and date."]);
+  if ($check->get_result()->num_rows > 0) {
+    echo json_encode(["status" => "error", "message" => "Seat already booked for this route/date."]);
     exit;
   }
 
-  // 3️⃣ Insert new record
   $stmt = $conn->prepare("
-    INSERT INTO tickets (seat, name, phone, origin, destination, travel_date, amount, ticket_number, comment)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO tickets (seat, name, phone, origin, destination, travel_date, amount, ticket_number, comment, created_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   ");
-  $stmt->bind_param("isssssiss", $seat, $name, $phone, $origin, $destination, $date, $amount, $ticketNumber, $comment);
+  $stmt->bind_param("isssssisss", $seat, $name, $phone, $origin, $destination, $date, $amount, $ticketNumber, $comment, $createdBy);
+  $stmt->execute();
 
-  if ($stmt->execute()) {
-    echo json_encode(["status" => "success", "message" => "Ticket booked successfully."]);
-  } else {
-    echo json_encode(["status" => "error", "message" => "Database insert failed: " . $conn->error]);
-  }
+  echo json_encode(["status" => "success"]);
 
 } elseif ($method === "GET") {
-  // Get all tickets (optional filter)
-  $destination = $_GET['destination'] ?? '';
-  $sql = "SELECT * FROM tickets";
-  if ($destination) {
-    $sql .= " WHERE destination = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("s", $destination);
-  } else {
-    $stmt = $conn->prepare($sql);
-  }
-
-  $stmt->execute();
-  $result = $stmt->get_result();
-  $tickets = [];
-  while ($row = $result->fetch_assoc()) {
-    $tickets[] = $row;
-  }
-
+  $result = $conn->query("SELECT * FROM tickets ORDER BY id DESC");
+  $tickets = $result->fetch_all(MYSQLI_ASSOC);
   echo json_encode($tickets);
+
+} elseif ($method === "PUT") {
+  $data = json_decode(file_get_contents("php://input"), true);
+  $id = intval($data['id']);
+  $name = trim($data['name']);
+  $phone = trim($data['phone']);
+  $amount = floatval($data['amount']);
+  $comment = trim($data['comment']);
+
+  $stmt = $conn->prepare("UPDATE tickets SET name=?, phone=?, amount=?, comment=? WHERE id=?");
+  $stmt->bind_param("ssdsi", $name, $phone, $amount, $comment, $id);
+  $stmt->execute();
+
+  echo json_encode(["status" => "success"]);
+
+} elseif ($method === "DELETE") {
+  $id = intval($_GET['id'] ?? 0);
+  if ($id > 0) {
+    $stmt = $conn->prepare("DELETE FROM tickets WHERE id=?");
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+  }
+  echo json_encode(["status" => "success"]);
 }
 ?>
